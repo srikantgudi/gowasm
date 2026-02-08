@@ -7,12 +7,7 @@
 ### Declare functions in the `main`
 
 ```golang
-- js.Global().Set("setZoneTime", js.FuncOf(setZoneTime))
-- js.Global().Set("getZoneTime", js.FuncOf(getZoneTime))
-- js.Global().Set("setLocalTime", js.FuncOf(setLocalTime))
 - js.Global().Set("wctof", js.FuncOf(wctof))
-- js.Global().Set("wftoc", js.FuncOf(wftoc))
-- js.Global().Set("wGetReportData", js.FuncOf(wGetReportData))
 ```
 
 ### Define them next, for example
@@ -25,6 +20,22 @@ func wctof(this js.Value, args []js.Value) interface{} {
   getElement(resultId).Set("innerHTML", fmt.Sprintf("%.2f C = %.2f F", val, totemp))
   return nil
 }
+```
+
+### Minimal JS reference - init
+
+```javascript
+<script src="wasm_exec.js"></script>
+    <script>
+      const go = new Go();
+      let selZones;
+      WebAssembly.instantiateStreaming(
+        fetch("gowasm.wasm"),
+        go.importObject,
+      ).then((result) => {
+        go.run(result.instance);
+        // other init functions, if any
+      });
 ```
 
 #### That's all the coding
