@@ -1,0 +1,3 @@
+GOOS=js GOARCH=wasm go build -o gowasm.wasm -ldflags "-w -s"
+ls -l
+npx serve .

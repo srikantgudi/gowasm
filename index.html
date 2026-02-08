@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="w-3/4 m-auto">
+    <div class="text-4xl">Go WASM Demo App</div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="p-1 shadow-md shadow-blue-500 border-t-1">
+        <div class="text-3xl p-1 bg-gray-300 my-4">Clock Example</div>
+        <div class="flex gap-4">
+          <div>
+              <div class="text-2xl mb-4">Select a zone</div>
+              <select
+                id="select-zone"
+                size="35"
+                class="p-1 border rounded-sm"
+                onchange="updateZoneTime()"
+              ></select>
+          </div>
+          <div>
+            <div>
+                <div class="text-2xl font-bold mb-2">Zone Time:
+                  <button onclick="updateZoneTime()" class="p-1 bg-gray-300 text-sm rounded-sm">Update</button>
+                </div>
+                <div class="flex sm:flex-col sm:text-sm gap-1">
+                    <div id="zone-name" class="md:text-2xl text-blue-500 font-bold">-- Selected zone --</div>
+                    <div id="zone-time" class="md:text-2xl font-bold">-- zone time --</div>
+                </div>
+                <div class="my-2">
+                  <svg viewBox="-50 -50 100 100" width="300">
+                      <circle id="zone-face" r="49" fill="lightcyan" stroke="lightblue" />
+                      <circle id="zone-face-inner" r="9" fill="cornflowerblue" />
+                      <line id="thr" x1="-4" x2="30" stroke="navy" stroke-linecap="round" transform="rotate(-150)" />
+                      <line id="tmi" x1="-4" x2="42" stroke="navy" stroke-linecap="round" transform="rotate(-30)" />
+                      <line id="tse" x1="-4" x2="42" stroke="olive" stroke-linecap="round" transform="rotate(-90)" />
+                  </svg>
+                </div>
+            </div>
+            <div class="flex flex-col justify-center items-center">
+              <!-- Local time -->
+              <div class="text-2xl my-1">Local Time:
+                <button class="p-1 text-sm bg-gray-300 rounded-sm" onclick="updateLocalTime()">Update</button>
+              </div>
+              <div id="local-time" class="text-lg">- ?? -</div>
+              <svg viewBox="-50 -50 100 100" width="200" height="200">
+                <circle id="loc-face" r="49" fill="lightcyan" stroke="lightblue" />
+                <circle id="loc-face-inner" r="9" fill="cornflowerblue" />
+                <line id="locthr" x1="-4" x2="30" stroke="maroon" stroke-linecap="round" transform="rotate(-150)" />
+                <line id="loctmi" x1="-4" x2="40" stroke="maroon" stroke-linecap="round" transform="rotate(-30)" />
+                <line id="loctse" x1="-4" x2="40" stroke="teal" stroke-linecap="round" stroke-width="0.5" transform="rotate(-90)" />
+              </svg>
+              <!-- end: Local time -->
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex flex-col shadow-md shadow-blue-500 border-t-1 p-1">
+        <div class="text-3xl p-1 bg-gray-300 my-4">Miscellaneous</div>
+        <!-- temperature converter -->
+        <div class="shadow-md shadow-gray-400 p-1">
+          <div class="text-2xl text-blue-600">Temperature Converter</div>
+          <div class="flex gap-2 p-1 my-2">
+            <label>Enter value:
+              <input type="number" id="tempval" class="w-20 p-2 shadow-md shadow-gray-500" />
+            </label>
+            <button onclick="jctof()" class="px-2 border-2 border-gray-400 h-10 cursor-pointer bg-gray-200 hover:bg-gray-300 rounded-sm">C to F</button>
+            <button onclick="jftoc()" class="px-2 border-2 border-gray-400 h-10 cursor-pointer bg-gray-200 hover:bg-gray-300 rounded-sm">F to C</button>
+          </div>
+          <div id="temp-result" class="border border-gray-200 text-3xl p-1 px-4">-- result --</div>
+        </div>
+        <!-- end: temperature converter -->
+        <!-- dynamic data fetch -->
+        <div class="my-2 p-2 shadow-md shadow-gray-600">
+          <div class="text-2xl text-blue-600">Dynamic Data Fetch (from wasm)</div>
+          <div class="flex gap-2 items-center">
+            Select path:
+            <select id="path" class="p-2 shadow-md shadow-gray-600">
+              <option class="p-1" value="posts">Posts</button>
+              <option class="p-1" value="comments">Comments</button>
+            </select> 
+            <button onclick="fetchRemoteData()" class="px-2 shadow-md shadow-gray-400 h-10 cursor-pointer bg-gray-200 hover:bg-gray-300 rounded-sm">Fetch data</button>
+          </div>
+          <div class="h-120 shadow-md shadow-blue-500 p-2 my-1 overflow-y-auto" id="dynamic-result">-- dynamic-result --</div>
+        </div>
+        <!-- end: dynamic data fetch -->
+      </div>
+    </div>
+
+    <script src="wasm_exec.js"></script>
+    <script>
+      const go = new Go();
+      let selZones;
+      WebAssembly.instantiateStreaming(
+        fetch("gowasm.wasm"),
+        go.importObject,
+      ).then((result) => {
+        go.run(result.instance);
+        let timeZones = Intl.supportedValuesOf("timeZone")
+        selZones = document.getElementById("select-zone")
+        timeZones.forEach(z => {
+            let opt = document.createElement('option')
+            opt.textContent = z
+            opt.value = z
+            selZones.appendChild(opt)
+        })
+        selZones.value = timeZones[0]
+        selZones.onchange('change')
+        setLocalTime()
+      });
+      const elemId = (id) => document.getElementById(id);
+      const updateLocalTime = () => {
+        setLocalTime();
+      };
+      const updateZoneTime = () => {
+        setZoneTime(selZones.value, "ztime", 'clockzone');
+      };
+      const jctof = () => {
+        wctof(elemId("tempval").value, "temp-result")
+      }
+      const jftoc = () => {
+        wftoc(elemId("tempval").value, "temp-result")
+      }
+      const fetchRemoteData = () => {
+        const path = elemId("path").value
+        wGetReportData(path)
+      }
+    </script>
+  </body>
+</html>
